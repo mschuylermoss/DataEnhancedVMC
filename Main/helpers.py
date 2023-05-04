@@ -1,3 +1,4 @@
+import os
 import tensorflow as tf
 import numpy as np
 
@@ -20,3 +21,16 @@ def min_moving_average(values,window):
     min_loc = np.where(ma_values==min_ma)
     return min_loc
 
+def write_config(config,path):
+    if not os.path.exists(path):
+        os.makedirs(path)
+    with open(path+'/config.txt', 'w') as file:
+        for k,v in config.items():
+            file.write(k+f'={v}\n')
+
+def load_vmc_start(path):
+    if not os.path.exists(path+'/vmc_start_step.npy'):
+        vmc_start = 0
+    else:
+        vmc_start = np.load(hybrid_path_base+'/vmc_start_step.npy').tolist()[0]
+    return vmc_start

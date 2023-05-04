@@ -1,11 +1,11 @@
-import os
 import tensorflow as tf
 import numpy as np
 from dset_helpers import create_KZ_tf_dataset, data_given_param
+from dset_helpers import load_KZ_QMC_uncorr_data_from_batches, create_KZ_QMC_tf_dataset
 from OneD_RNN import OneD_RNN_wavefxn 
 from TwoD_RNN import MDRNNWavefunction, MDTensorizedRNNCell, MDRNNGRUcell
 from energy_func import buildlattice, construct_mats, get_Rydberg_Energy_Vectorized
-from helpers import optimizer_initializer, min_moving_average
+from helpers import optimizer_initializer, min_moving_average, write_config, load_vmc_start
 # from stag_mag import calculate_stag_mag
 
 physical_devices = tf.config.list_physical_devices('GPU')
@@ -30,8 +30,8 @@ def train_wavefunction(config):
     Lx = config['Lx']
     Ly = config['Ly']
     V = config['V']
-    delta = config['delta']
     Omega = config['Omega']
+    delta = config['delta']
     sweep_rate = config['sweep_rate']
     trunc = config.get('trunc',100)
     if config['Print'] ==True:
@@ -56,8 +56,8 @@ def train_wavefunction(config):
 
     # ---- General Training Parameters -------------------------------------------------------------
     ns = config['ns']
-    data_epochs = config.get('Data_epochs',0)
-    vmc_epochs = config.get('VMC_epochs',10000)
+    data_epochs = config.get('data_epochs',0)
+    vmc_epochs = config.get('vmc_epochs',10000)
     ckpt_every = config.get('ckpt_every',10)
 
     if config['Print'] ==True:
@@ -75,7 +75,7 @@ def train_wavefunction(config):
         data_lr = config.get('data_lr',1e-3)
         qmc_data = config.get('QMC_data', False)
         if qmc_data:
-            dset_size = config.get('dset_size',1000)
+            dset_size = config.get('QMC_dset_size',1000)
             data = load_KZ_QMC_uncorr_data_from_batches(delta,dset_size)
             tf_dataset = create_KZ_QMC_tf_dataset(data)
             if config['Print']:
@@ -98,25 +98,18 @@ def train_wavefunction(config):
             data_path = base_path + '/QMC_data/dset_size_{dset_size}'
         else:
             data_path = base_path + '/Exp_data'
-        if not os.path.exists(data_path):
-            os.makedirs(data_path)
-        with open(data_path+'/config.txt', 'w') as file:
-            for k,v in config.items():
-                file.write(k+f'={v}\n')
+        write_config(config,data_path)
 
-        hybrid_path = base_path + f'/hybrid_train/lr_{vmc_lr}'
-        if not os.path.exists(hybrid_path):
-            os.makedirs(hybrid_path)
-        with open(hybrid_path+'/config.txt', 'w') as file:
-            for k,v in config.items():
-                file.write(k+f'={v}\n')
+        hybrid_path_base = base_path + f'/hybrid_train'
+        write_config(config,hybrid_path_base)
+        vmc_start = load_vmc_start(hybrid_path_base)
+        if vmc_start == 0:
+            hybrid_path = hybrid_path_base
+        else:
+            hybrid_path = hybrid_path_base + f'/{vmc_start}_ds/lr_{vmc_lr}'
 
     vmc_path = base_path + '/vmc_only'
-    if not os.path.exists(vmc_path):
-        os.makedirs(vmc_path)
-    with open(vmc_path+'/config.txt', 'w') as file:
-        for k,v in config.items():
-            file.write(k+f'={v}\n')
+    write_config(config,vmc_path)
 
     # ---- Define Train Step --------------------------------------------------------------------
     interaction_list = buildlattice(Lx,Ly,trunc)
@@ -178,9 +171,20 @@ def train_wavefunction(config):
                 cost = []
         elif (data_epochs > 0) & (data_epochs//ckpt_every <= len(data_manager.checkpoints)):    # Finish hybrid training
             ckpt.restore(hybrid_manager.latest_checkpoint)
-            if hybrid_manager.latest_checkpoint:
+            if hybrid_manager.latest_checkpoint:                   
                 print("CKPT ON and ckpt found.")
                 print(f"Restored from {hybrid_manager.latest_checkpoint}")
+                latest_ckpt = ckpt.step.numpy()
+                print(f"Continuing at step {latest_ckpt}.")
+                optimizer_initializer(wavefxn.optimizer)
+                energy = np.load(path+'/Energy.npy').tolist()[0:latest_ckpt]
+                variance = np.load(path+'/Variance.npy').tolist()[0:latest_ckpt]
+                cost = np.load(path+'/Cost.npy').tolist()[0:latest_ckpt]
+            # Try restarting from last data-driven step
+            ckpt.restore(data_manager.latest_checkpoint)
+            if data_manager.latest_checkpoint:
+                print("CKPT ON and ckpt found.")
+                print(f"Restored from {data_manager.latest_checkpoint}")
                 latest_ckpt = ckpt.step.numpy()
                 print(f"Continuing at step {latest_ckpt}.")
                 optimizer_initializer(wavefxn.optimizer)
@@ -249,7 +253,7 @@ def train_wavefunction(config):
                 data_manager.save()
                 print(f"Saved checkpoint for step {n} in {data_path}.")
             if (config['Write_Data']) & (n%ckpt_every == 0): # save training quantities each time we checkpoint
-                print(f"Saved training quantitites for step {n} in {path}.")
+                print(f"Saved training quantitites for step {n} in {data_path}.")
                 np.save(data_path+'/Energy',energy)
                 np.save(data_path+'/Variance',variance)
                 np.save(data_path+'/Cost',cost)
@@ -258,7 +262,11 @@ def train_wavefunction(config):
     
     if (data_epochs > 0) & (vmc_epochs > 0):
         loc_ma_energies = min_moving_average(energies,50)
+        np.save(hybrid_path+'/loc_ma_energy',loc_ma_energies)
         vmc_start = loc_ma_energies//ckpt_every
+        hybrid_path = hybrid_path_base + f'/{vmc_start}_ds/lr_{vmc_lr}'
+        hybrid_manager = tf.train.CheckpointManager(ckpt, hybrid_path, max_to_keep=1)
+        np.save(hybrid_path+'/vmc_start_step',vmc_start*ckpt_every)
         if (vmc_start > 0) & (vmc_start < len(data_manager.checkpoints)):
             ckpt.restore(data_manager.checkpoints[vmc_start])
             print(f"CKPT ON and ckpt {vmc_start} found.")
@@ -292,12 +300,22 @@ def train_wavefunction(config):
             print(f"Variance = {var_E}")
             print(" ")
         if (config['CKPT']) & (n%ckpt_every == 0): # checkpoint frequently during data training
-            data_manager.save()
-            print(f"Saved checkpoint for step {n} in {data_path}.")
+            if data_epochs > 0:
+                hybrid_manager.save()
+                print(f"Saved checkpoint for step {n} in {hybrid_path}.")
+            else:
+                vmc_manager.save()
+                print(f"Saved checkpoint for step {n} in {vmc_path}.")
         if (config['Write_Data']) & (n%ckpt_every == 0): # save training quantities each time we checkpoint
-            print(f"Saved training quantitites for step {n} in {path}.")
-            np.save(data_path+'/Energy',energy)
-            np.save(data_path+'/Variance',variance)
-            np.save(data_path+'/Cost',cost)
+            if data_epochs > 0:
+                print(f"Saved training quantitites for step {n} in {hybrid_path}.")
+                np.save(hybrid_path+'/Energy',energy)
+                np.save(hybrid_path+'/Variance',variance)
+                np.save(hybrid_path+'/Cost',cost)
+            else:
+                print(f"Saved training quantitites for step {n} in {vmc_path}.")
+                np.save(vmc_path+'/Energy',energy)
+                np.save(vmc_path+'/Variance',variance)
+                np.save(vmc_path+'/Cost',cost)
 
     return wavefxn, energy, variance, cost
