@@ -20,6 +20,8 @@ echo $dim
 echo $nh
 
 python script_data_training.py \
-    $delta 10000 \
-    --rnn_dim $dim --nh $nh \
+    $delta \
+    10000 \
+    --rnn_dim $dim \
+    --nh $nh \
     --seed $seed

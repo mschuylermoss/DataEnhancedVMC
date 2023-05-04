@@ -16,9 +16,6 @@ parser.add_argument('delta', type=float,
 # Required positional argument
 parser.add_argument('data_epochs', type=int,
                     help='A required integer argument: number of data training steps')
-# Required positional argument
-parser.add_argument('vmc_epochs', type=int,
-                    help='A required integer argument: number of vmc training steps')
 # Optional argument
 parser.add_argument('--rnn_dim', type=str, default='OneD',
                     help='An optional string argument: dimension of rnn used')
@@ -40,7 +37,6 @@ sweep_rate = 15
 
 delta_arg = args.delta
 data_steps_arg = args.data_epochs
-vmc_steps_arg = args.vmc_epochs
 rnn_dim_arg = args.rnn_dim
 nh_arg = args.nh
 seed_arg = args.seed
@@ -66,7 +62,6 @@ def main():
         'data_epochs':data_steps_arg,
         'vmc_epochs':0,
         'data_lr': 1e-3,  # learning rate (for data-driven)
-        'vmc_lr': 1e-3, # learning rate (for Hamiltonian-driven)
         'ckpt_every': 10,
 
         'batch_size_data': 100,

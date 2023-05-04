@@ -5,9 +5,7 @@ tf.config.experimental.set_memory_growth(physical_devices[0], True)
 import sys
 sys.path.append('../..')
 from dset_helpers import data_given_param
-from train_VMC import Train_w_VMC
-from train_data import Train_w_Data
-from train_hybrid import Train_w_Data_then_VMC
+from train import train_wavefunction
 
 #--
 import argparse
@@ -17,11 +15,14 @@ parser = argparse.ArgumentParser(description='Parser for starting multiple runs 
 parser.add_argument('delta', type=float,
                     help='A required float argument: value of delta') ## dont need -- in front of it
 # Required positional argument
-parser.add_argument('data_epochs', type=int,
-                    help='A required integer argument: number of data training steps')
-# Required positional argument
 parser.add_argument('vmc_epochs', type=int,
                     help='A required integer argument: number of vmc training steps')
+# Optional argument
+parser.add_argument('--data_lr', type=float, default=1e-3,
+                    help='An optional float argument: learning rate for data-driven training')
+# Optional argument
+parser.add_argument('--vmc_lr', type=float, default=1e-3,
+                    help='An optional float argument: learning rate for Hamiltonian-driven training')
 # Optional argument
 parser.add_argument('--rnn_dim', type=str, default='OneD',
                     help='An optional string argument: dimension of rnn used')
@@ -42,8 +43,8 @@ V0 = Rb**6 * Omega
 sweep_rate = 15
 
 delta_arg = args.delta
-data_steps_arg = args.data_epochs
 vmc_steps_arg = args.vmc_epochs
+vmc_lr_arg = args.vmc_lr
 rnn_dim_arg = args.rnn_dim
 nh_arg = args.nh
 seed_arg = args.seed
@@ -68,20 +69,15 @@ def main():
         'ns': 100,
         'data_epochs':0,
         'vmc_epochs':vmc_steps_arg,
-        'data_lr': 1e-3,  # learning rate (for data-driven)
-        'vmc_lr': 1e-3, # learning rate (for Hamiltonian-driven)
+        'vmc_lr': vmc_lr_arg, # learning rate (for Hamiltonian-driven)
         'ckpt_every': 10,
-
-        'batch_size_data': 100,
-        'QMC_data': False,
-        'QMC_dset_size': 1000,
         
         'Print':True,
         'Write_Data': True,
         'CKPT':True
         }
     
-    return Train_w_VMC(config)
+    return train_wavefunction(config)
 
 
 if __name__ == "__main__":

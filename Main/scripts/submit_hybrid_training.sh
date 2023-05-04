@@ -17,10 +17,15 @@ source ../ReconstructRydberg/bin/activate
 
 echo $delta
 echo $data_epochs
+echo $vmc_epochs
 echo $dim
 echo $nh
 
 python script_hybrid_training.py \
-    $delta $data_epochs \
-    --rnn_dim $dim --nh $nh \
+    $delta \
+    $data_epochs \
+    $vmc_epochs \
+    --vmc_lr $vmc_lr \
+    --rnn_dim $dim \
+    --nh $nh \
     --seed $seed

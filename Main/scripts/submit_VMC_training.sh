@@ -20,6 +20,9 @@ echo $dim
 echo $nh
 
 python script_VMC_training.py \
-    $delta 0 \
-    --rnn_dim $dim --nh $nh \
+    $delta \
+    10000 \
+    --vmc_lr 1e-3 \
+    --rnn_dim $dim \
+    --nh $nh \
     --seed $seed
