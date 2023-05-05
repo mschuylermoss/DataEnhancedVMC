@@ -84,8 +84,8 @@ def create_KZ_tf_dataset(data):
 def bool_to_bin(rydberg_dataset):
     return rydberg_dataset.astype(int)
 
-def data_given_param(sweep_rate:int,delta_value):
-    data_files = np.load(f'../../../KZ_Data/KZ_data_16x16_{sweep_rate}_MHz_per_us.npz')
+def data_given_param(sweep_rate:int,delta_value,Lx):
+    data_files = np.load(f'../../KZ_Data/{Lx}x{Lx}/KZ_data_{Lx}x{Lx}_{sweep_rate}_MHz_per_us.npz')
     param_value = delta_value/data_files['rabi_freq']
     index = np.where(np.isclose(data_files['params'],param_value))[0]
     if len(index) < 1:

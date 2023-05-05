@@ -81,7 +81,7 @@ def train_wavefunction(config):
             if config['Print']:
                 print(f"Training on {np.shape(data)} QMC samples for {data_epochs} data-driven training steps.")
         else:
-            data = data_given_param(sweep_rate,delta)
+            data = data_given_param(sweep_rate,delta,Lx)
             tf_dataset = create_KZ_tf_dataset(data)   
             if config['Print']:
                 print(f"Training on {np.shape(data)} experimental samples for {data_epochs} data-driven training steps.") 
