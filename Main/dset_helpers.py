@@ -4,6 +4,7 @@ import numpy as np
 import glob
 # import pandas as pd
 
+# ----- DSET HELPERS: QMC Benchmark Data -------------------------------
 Exact_Es = {'4':-0.4534132086591546,'8':-0.40518005298872917,'12':-0.3884864748124427,'16':-0.380514770608724}
 
 def load_exact_Es(dim): ## note that the exact QMC energies are stored in info.txt for each of the dims we looked at in our last project
@@ -22,6 +23,8 @@ def load_QMC_data(dim):
         data = np.loadtxt(file)
         uploaded[file] = data
     return uploaded
+
+#------ DSET HELPERS: KZ QMC Data -------------------------------------------
 
 # def load_KZ_QMC_data(delta):
 #     path = "./../../../QMC_data/all_samples/"
@@ -45,7 +48,7 @@ def load_KZ_QMC_uncorr_data(delta,dset_size):
 def load_KZ_QMC_uncorr_data_from_batches(delta,dset_size):
     data = np.zeros((1,256))
     for i in range(0,10):
-        batch = np.load(f"./../../../QMC_data/all_samples/delta_{delta}/all_samples_batch_{i}.npy")
+        batch = np.load(f"./../../Data/QMC_Data/kz_qmc_samples/delta_{delta}/all_samples_batch_{i}.npy")
         data = np.append(data, batch,axis = 0)
     data = data[1:,:]
     indices = np.random.randint(0,high=np.shape(data)[0],size=dset_size)
@@ -72,6 +75,8 @@ def create_tf_dataset_from_QMCdata(uploaded_files, data_step_size=100):
     dataset = tf.data.Dataset.from_tensor_slices(data)
     return dataset
 
+# ------ DSET HELPERS: KZ Experimental Data -------------------------------
+
 def create_KZ_tf_dataset(data):
     # The data comes in shape ((lattice,shape),1,shots) where (lattice,shape) = square lattice (EX: 16x16)
     Lx = np.shape(data)[0]
@@ -85,7 +90,7 @@ def bool_to_bin(rydberg_dataset):
     return rydberg_dataset.astype(int)
 
 def data_given_param(sweep_rate:int,delta_value,Lx):
-    data_files = np.load(f'../../KZ_Data/{Lx}x{Lx}/KZ_data_{Lx}x{Lx}_{sweep_rate}_MHz_per_us.npz')
+    data_files = np.load(f'../../Data/KZ_Data/{Lx}x{Lx}/KZ_data_{Lx}x{Lx}_{sweep_rate}_MHz_per_us.npz')
     param_value = delta_value/data_files['rabi_freq']
     index = np.where(np.isclose(data_files['params'],param_value))[0]
     if len(index) < 1:
