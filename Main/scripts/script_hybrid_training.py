@@ -3,7 +3,7 @@ import tensorflow as tf
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 import sys
-sys.path.append('../..')
+sys.path.append('..')
 from train import train_wavefunction
 
 #--
@@ -34,6 +34,12 @@ parser.add_argument('--nh', type=int, default=32,
 # Optional argument
 parser.add_argument('--seed', type=int, default=100,
                     help='An optional integer argument: seed for RNG')
+# Optional argument
+parser.add_argument('--qmc_data', action="store_true", default=False,
+                    help='An optional flag argument: indicates whether to use qmc samples as data')
+# Optional argument
+parser.add_argument('--qmc_dset_size', type=int, default=1000,
+                    help='An optional integer argument: size of data set of qmc samples')
 args = parser.parse_args()
 #--
 
@@ -52,6 +58,8 @@ vmc_lr_arg = args.vmc_lr
 rnn_dim_arg = args.rnn_dim
 nh_arg = args.nh
 seed_arg = args.seed
+qmc_data_arg = args.qmc_data
+qmc_dset_size_arg = args.qmc_dset_size
 
 def main():
     config = {
@@ -78,8 +86,8 @@ def main():
         'ckpt_every': 10,
 
         'batch_size_data': 100,
-        'QMC_data': False,
-        'QMC_dset_size': 1000,
+        'QMC_data': qmc_data_arg,
+        'QMC_dset_size': qmc_dset_size_arg,
         
         'Print':True,
         'Write_Data': True,

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #SBATCH -t 1-00:00:00
 #SBATCH --gpus-per-node=p100  
-#SBATCH --output=outputs/slurm-%A_%a.out 
+#SBATCH --output=outputs/output-%j.out
 #SBATCH --mem=20000
-#SBATCH --account=rrg-rgmelko-ab
+#SBATCH --account=def-rgmelko
 #SBATCH --mail-user=msmoss@uwaterloo.ca
 #SBATCH --mail-type=FAIL
 
@@ -13,7 +13,7 @@ nvidia-smi
 
 export TF_GPU_ALLOCATOR=cuda_malloc_async
 
-source ../ReconstructRydberg/bin/activate
+source DataEnhancedVMC/bin/activate
 
 echo $delta
 echo $dim

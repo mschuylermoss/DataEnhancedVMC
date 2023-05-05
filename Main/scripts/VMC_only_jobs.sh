@@ -13,7 +13,7 @@ do
 
         X="VMC|d=$delta|2D|Nh=32|$seed"
        	sbatch -J "$X" --export="delta=$delta,dim=TwoD,nh=16,seed=$seed" submit_VMC_training.sh
-            
+        
     done 
     sleep 0.5s
 done
