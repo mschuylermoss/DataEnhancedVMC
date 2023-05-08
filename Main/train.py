@@ -103,7 +103,7 @@ def train_wavefunction(config):
 
         hybrid_path_base = base_path + f'/hybrid_train'
         write_config(config,hybrid_path_base)
-        vmc_start = load_vmc_start(hybrid_path_base)
+        vmc_start = load_vmc_start(hybrid_path_base,ckpt_every)
         if vmc_start == 0:
             hybrid_path = hybrid_path_base
         else:
@@ -155,32 +155,7 @@ def train_wavefunction(config):
 
     if config['CKPT']:
         if data_epochs > 0:
-            if (len(data_manager.checkpoints) < data_epochs//ckpt_every):       # Finish data-driven training
-                ckpt.restore(data_manager.latest_checkpoint)
-                if data_manager.latest_checkpoint:
-                    print("CKPT ON and ckpt found.")
-                    print(f"Restored from {data_manager.latest_checkpoint}")
-                    latest_ckpt = ckpt.step.numpy()
-                    print(f"Continuing at step {latest_ckpt}.")
-                    optimizer_initializer(wavefxn.optimizer)
-                    wavefxn.optimizer.lr = data_lr
-                    energy = np.load(data_path+'/Energy.npy').tolist()[0:latest_ckpt]
-                    variance = np.load(data_path+'/Variance.npy').tolist()[0:latest_ckpt]
-                    cost = np.load(data_path+'/Cost.npy').tolist()[0:latest_ckpt]
-            else: #(len(data_manager.checkpoints) >= data_epochs//ckpt_every):    # Finish hybrid training
-                # Try restarting from last Hamiltonian-driven step
-                ckpt.restore(hybrid_manager.latest_checkpoint)
-                if hybrid_manager.latest_checkpoint:                   
-                    print("CKPT ON and ckpt found.")
-                    print(f"Restored from {hybrid_manager.latest_checkpoint}")
-                    latest_ckpt = ckpt.step.numpy()
-                    print(f"Continuing at step {latest_ckpt}.")
-                    optimizer_initializer(wavefxn.optimizer)
-                    wavefxn.optimizer.lr = vmc_lr
-                    energy = np.load(hybrid_path+'/Energy.npy').tolist()[0:latest_ckpt]
-                    variance = np.load(hybrid_path+'/Variance.npy').tolist()[0:latest_ckpt]
-                    cost = np.load(hybrid_path+'/Cost.npy').tolist()[0:latest_ckpt]
-                # Try restarting from last data-driven step
+            if (len(data_manager.checkpoints) < (data_epochs//ckpt_every - 1)):       # Finish data-driven training
                 ckpt.restore(data_manager.latest_checkpoint)
                 if data_manager.latest_checkpoint:
                     print("CKPT ON and ckpt found.")
@@ -199,6 +174,41 @@ def train_wavefunction(config):
                     wavefxn.optimizer.lr = data_lr
                     energy = []
                     variance = []
+                    cost = []
+            else: #(len(data_manager.checkpoints) >= data_epochs//ckpt_every):    # Finish hybrid training
+                # Try restarting from last Hamiltonian-driven step
+                ckpt.restore(hybrid_manager.latest_checkpoint)
+                if hybrid_manager.latest_checkpoint:                   
+                    print("CKPT ON and ckpt found.")
+                    print(f"Restored from {hybrid_manager.latest_checkpoint}")
+                    latest_ckpt = ckpt.step.numpy()
+                    print(f"Continuing at step {latest_ckpt}.")
+                    optimizer_initializer(wavefxn.optimizer)
+                    wavefxn.optimizer.lr = vmc_lr
+                    energy = np.load(hybrid_path+'/Energy.npy').tolist()[0:latest_ckpt]
+                    variance = np.load(hybrid_path+'/Variance.npy').tolist()[0:latest_ckpt]
+                    cost = np.load(hybrid_path+'/Cost.npy').tolist()[0:latest_ckpt]
+                    data_epochs = 0
+                # Try restarting from last data-driven step
+                else:
+                    ckpt.restore(data_manager.latest_checkpoint)
+                    if data_manager.latest_checkpoint:
+                        print("CKPT ON and ckpt found.")
+                        print(f"Restored from {data_manager.latest_checkpoint}")
+                        latest_ckpt = ckpt.step.numpy()
+                        print(f"Continuing at step {latest_ckpt}.")
+                        optimizer_initializer(wavefxn.optimizer)
+                        wavefxn.optimizer.lr = data_lr
+                        energy = np.load(data_path+'/Energy.npy').tolist()[0:latest_ckpt]
+                        variance = np.load(data_path+'/Variance.npy').tolist()[0:latest_ckpt]
+                        cost = np.load(data_path+'/Cost.npy').tolist()[0:latest_ckpt]
+                    else:
+                        print("CKPT ON but no ckpt found. Initializing from scratch.")
+                        latest_ckpt = 0
+                        optimizer_initializer(wavefxn.optimizer)
+                        wavefxn.optimizer.lr = data_lr
+                        energy = []
+                        variance = []
                     cost = []
         elif (data_epochs == 0):                                                                # Finish vmc only training
             ckpt.restore(vmc_manager.latest_checkpoint)
@@ -242,24 +252,23 @@ def train_wavefunction(config):
         else:
             raise ValueError("data_epochs must be >= 0.")
         
-
     # ---- Train w/ Data (?) ----------------------------------------------------------------------------------
     it = global_step.numpy()
 
     if data_epochs > 0:
-        for n in range(it+1, epochs+1):
+        for n in range(it+1, data_epochs+1):
             dset = tf_dataset.shuffle(len(tf_dataset))
             dset = dset.batch(batch_size_data)
             loss = []
             for i, batch in enumerate(dset):
-                batch_loss = train_step(batch)
+                batch_loss = train_step_data(batch)
                 loss.append(batch_loss)
             avg_loss = np.mean(loss)
             samples, _ = wavefxn.sample(ns)
             samples_logpsi = wavefxn.logpsi(samples)
             samples_elocs = Ryd_Energy_Function(Omega_tf,delta_tf,V0_tf,O_mat,V_mat,coeffs,samples,samples_logpsi)
             avg_E = np.mean(samples_elocs.numpy())/float(wavefxn.N)
-            var_E = np.var(energies)/float(wavefxn.N)
+            var_E = np.var(samples_elocs.numpy())/float(wavefxn.N)
             energy.append(avg_E)
             variance.append(var_E)
             cost.append(avg_loss)
@@ -280,28 +289,30 @@ def train_wavefunction(config):
         if config['Print']:
             print(f"Done with {data_epochs} data-driven training steps!")
     
-    if (data_epochs > 0) & (vmc_epochs > 0):
-        loc_ma_energies = min_moving_average(energies,50)
-        np.save(hybrid_path+'/loc_ma_energy',loc_ma_energies)
-        vmc_start = loc_ma_energies//ckpt_every
-        hybrid_path = hybrid_path_base + f'/{vmc_start}_ds/lr_{vmc_lr}'
-        hybrid_manager = tf.train.CheckpointManager(ckpt, hybrid_path, max_to_keep=1)
-        np.save(hybrid_path+'/vmc_start_step',vmc_start*ckpt_every)
-        if (vmc_start > 0) & (vmc_start < len(data_manager.checkpoints)):
-            ckpt.restore(data_manager.checkpoints[vmc_start])
-            print(f"CKPT ON and ckpt {vmc_start} found.")
-            print(f"Restored from {data_manager.checkpoints[vmc_start]}")
-            ckpt_step = ckpt.step.numpy()
-            print(f"Continuing at step {ckpt.step.numpy()}")
-            optimizer_initializer(wavefxn.optimizer)
-            wavefxn.optimizer.lr = vmc_lr
-            energy = np.load(data_path+'/Energy.npy').tolist()[0:ckpt_step]
-            variance = np.load(data_path+'/Variance.npy').tolist()[0:ckpt_step]
-            cost = np.load(data_path+'/Cost.npy').tolist()[0:ckpt_step]
+        if (vmc_epochs > 0):
+            loc_ma_energies = min_moving_average(energy,50)[0][0]
+            np.save(hybrid_path+'/loc_ma_energy',loc_ma_energies)
+            vmc_start = (loc_ma_energies//ckpt_every) * ckpt_every
+            hybrid_path = hybrid_path_base + f'/{vmc_start}_ds/lr_{vmc_lr}'
+            write_config(config,hybrid_path)
+            hybrid_manager = tf.train.CheckpointManager(ckpt, hybrid_path, max_to_keep=1)
+            np.save(hybrid_path+'/vmc_start_ckpt',vmc_start//ckpt_every)
+            if (vmc_start > 0) & (vmc_start < len(data_manager.checkpoints)):
+                ckpt.restore(data_manager.checkpoints[vmc_start])
+                print(f"CKPT ON and ckpt {vmc_start} found.")
+                print(f"Restored from {data_manager.checkpoints[vmc_start]}")
+                ckpt_step = ckpt.step.numpy()
+                print(f"Continuing at step {ckpt.step.numpy()}")
+                optimizer_initializer(wavefxn.optimizer)
+                wavefxn.optimizer.lr = vmc_lr
+                energy = np.load(data_path+'/Energy.npy').tolist()[0:ckpt_step]
+                variance = np.load(data_path+'/Variance.npy').tolist()[0:ckpt_step]
+                cost = np.load(data_path+'/Cost.npy').tolist()[0:ckpt_step]
 
     # ---- Train w/ VMC ----------------------------------------------------------------------------------
     it_vmc = global_step.numpy()
-
+    print(f"Beginning VMC training from step {it_vmc}")
+    
     for n in range(it_vmc+1, vmc_epochs+1):
         samples, _ = wavefxn.sample(ns)
         loss = train_step_VMC(samples)

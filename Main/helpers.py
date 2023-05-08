@@ -28,9 +28,13 @@ def write_config(config,path):
         for k,v in config.items():
             file.write(k+f'={v}\n')
 
-def load_vmc_start(path):
-    if not os.path.exists(path+'/vmc_start_step.npy'):
-        vmc_start = 0
+def load_vmc_start(path,ckpt_every):
+    if os.path.exists(path+'/loc_ma_energy.npy'):
+        vmc_start = np.load(path+'/loc_ma_energy.npy')
+        vmc_start = (vmc_start//ckpt_every) * ckpt_every
+        print(vmc_start)
+        if not os.path.exists(path + f"/{vmc_start}_ds"):
+            vmc_start = 0
     else:
-        vmc_start = np.load(hybrid_path_base+'/vmc_start_step.npy').tolist()[0]
+        vmc_start = 0
     return vmc_start

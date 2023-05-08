@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH -t 0-01:00:00
+#SBATCH -t 1-00:00:00
 #SBATCH --gpus-per-node=p100  
 #SBATCH --mem=20000
 #SBATCH --account=def-rgmelko
