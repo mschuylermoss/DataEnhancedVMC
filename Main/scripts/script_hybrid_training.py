@@ -63,7 +63,7 @@ qmc_dset_size_arg = args.qmc_dset_size
 
 def main():
     config = {
-        'name': 'AllTrainedModels', 
+        'name': 'AllTrainedModels2', 
 
         'Lx':Lx,  # number of sites in x-direction                    
         'Ly':Ly,  # number of sites in the y-directioni

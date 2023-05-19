@@ -20,6 +20,7 @@ echo $data_epochs
 echo $vmc_epochs
 echo $dim
 echo $nh
+echo $dset_size
 
 python script_hybrid_training.py \
     $delta \
@@ -28,4 +29,6 @@ python script_hybrid_training.py \
     --vmc_lr $vmc_lr \
     --rnn_dim $dim \
     --nh $nh \
-    --seed $seed 
+    --seed $seed \
+    --qmc_data \
+    --dset_size $dset_size

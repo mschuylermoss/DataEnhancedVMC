@@ -300,7 +300,7 @@ def train_wavefunction(config):
             if (vmc_start > 0) & (vmc_start < len(data_manager.checkpoints)):
                 ckpt.restore(data_manager.checkpoints[vmc_start])
                 print(f"CKPT ON and ckpt {vmc_start} found.")
-                print(f"Restored from {data_manager.checkpoints[vmc_start]}")
+                print(f"Restored from {data_manager.checkpoints[vmc_start//ckpt_every]}")
                 ckpt_step = ckpt.step.numpy()
                 print(f"Continuing at step {ckpt.step.numpy()}")
                 optimizer_initializer(wavefxn.optimizer)
