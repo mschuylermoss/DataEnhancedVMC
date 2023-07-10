@@ -12,7 +12,6 @@ class OneD_RNN_wavefxn(tf.keras.Model):
                  seed=1234):
         
         super(OneD_RNN_wavefxn, self).__init__()
-        # print("OneD RNN used in previous Rydberg project.")
 
         """ PARAMETERS """
         self.Lx       = Lx              # Size along x
@@ -51,7 +50,6 @@ class OneD_RNN_wavefxn(tf.keras.Model):
         sum_ = 0
         for k, v in zip(self.variables_names, self.trainable_variables_):
             v1 = tf.reshape(v, [-1])
-            # print(k, v1.shape)
             sum_ += v1.shape[0]
         print(f'The total number of parameters is {sum_}')
         
@@ -96,7 +94,6 @@ class RNNWavefunction1D(tf.keras.Model):
                  seed=1234):
         
         super(RNNWavefunction1D, self).__init__()
-        # print("OneD RNN adapted from Heisenberg-Kagome project.")
 
         """
             systemsize:             int
@@ -145,12 +142,10 @@ class RNNWavefunction1D(tf.keras.Model):
         self.trainable_variables_ = []
         self.trainable_variables_.extend(self.rnn.trainable_variables)
         self.trainable_variables_.extend(self.dense.trainable_variables)
-        # Check that there are the correct amount of trainable variables
         self.variables_names = [v.name for v in self.trainable_variables_]
         sum_ = 0
         for k, v in zip(self.variables_names, self.trainable_variables_):
             v1 = tf.reshape(v, [-1])
-            # print(k, v1.shape)
             sum_ += v1.shape[0]
         print(f'The total number of parameters is {sum_}')
 
@@ -217,7 +212,6 @@ class RNNWavefunction1D(tf.keras.Model):
         inputs = tf.zeros((numsamples,1, self.local_hilbert_space), dtype=tf.float32)  # Feed the table b in tf.
         rnn_state = self.rnn.get_initial_state(inputs)
 
-        # Logic in H-K version
         for n in range(self.N):
             rnn_output, rnn_state = self.rnn(inputs, rnn_state)
             output_prob = tf.squeeze(self.dense(rnn_output))
@@ -231,81 +225,4 @@ class RNNWavefunction1D(tf.keras.Model):
         one_hot_samples = tf.one_hot(samples, depth=self.local_hilbert_space, dtype=tf.float32)
         log_probs = 0.5 * tf.reduce_sum(tf.math.log(tf.reduce_sum(tf.multiply(probs, one_hot_samples), axis=2)), axis=1)
 
-        # # Logic in old version
-        # data = tf.one_hot(samples[:,0:self.N-1],depth=self.K)
-        # x0 = tf.zeros(shape=[num_samples,1,self.K],dtype=tf.float32)
-        # inputs_old = tf.concat([x0,data],axis=1)
-        # hidden_state = tf.zeros(shape=[num_samples,self.nh])
-        # rnn_output,_ = self.rnn(inputs_old,initial_state = hidden_state)
-        # probs_old    = self.dense(rnn_output)
-        # log_probs   = 0.5 * tf.reduce_sum(tf.reduce_sum(tf.multiply(tf.math.log(1e-10+probs),one_hot_samples),axis=2), axis=1)
-
         return log_probs
-
-
-
-# Vectorized Energy Function, below no longer needed
-#--------------------------------------------------------------------------------------------------------------------------------
-    # #@tf.function
-    # def localenergy(self,samples,logpsi):
-    #     # print("local energy in model function!")
-    #     eloc = tf.zeros(shape=[tf.shape(samples)[0]],dtype=tf.float32)
-    #     # Chemical potential
-    #     for j in range(self.N):
-    #         eloc += - self.delta * tf.cast(samples[:,j],tf.float32)
-    #     # print(eloc)
-    #     # count=0
-    #     for n in range(len(self.interactions)):
-    #         contrib = (self.V/self.interactions[n][0]) * tf.cast(samples[:,self.interactions[n][1]]*samples[:,self.interactions[n][2]],tf.float32)
-    #         # if np.all(contrib)>0:
-    #         #     count+=1
-    #         # print(contrib)
-    #         eloc += contrib
-    #     # print(count)
-    #     # print(eloc)
-    #     flip_logpsi = tf.zeros(shape=[tf.shape(samples)[0]])
-    #     # Off-diagonal part
-    #     for j in range(self.N):
-    #         flip_samples = np.copy(samples)
-    #         flip_samples[:,j] = 1 - flip_samples[:,j]
-    #         flip_logpsi = self.logpsi(flip_samples)
-    #         eloc += -0.5*self.Omega * tf.math.exp(flip_logpsi-logpsi)
-    #     # print(eloc)
-    #     return eloc
-
-    # """ Generate the square lattice structures """
-    # def coord_to_site(self,x,y):
-    #     return self.Ly*x+y
-    
-    # def buildlattice(self):
-    #     self.interactions = []
-        
-    #     for n in range(1,self.Lx):
-    #         for n_ in range(n+1):
-                
-    #             if n+n_ > self.trunc:
-    #                 continue
-        
-    #             else:
-    #                 for x in range(self.Lx-n_):
-    #                     for y in range(self.Ly-n):
-    #                         coeff = np.sqrt(n**2+n_**2)**6
-    #                         if n_ == 0 :
-    #                             self.interactions.append([coeff,self.coord_to_site(x,y),self.coord_to_site(x,y+n)])
-    #                         elif n == n_: 
-    #                             self.interactions.append([coeff,self.coord_to_site(x,y),self.coord_to_site(x+n,y+n)])
-    #                             self.interactions.append([coeff,self.coord_to_site(x+n,y),self.coord_to_site(x,y+n)])
-    #                         else:
-    #                             self.interactions.append([coeff,self.coord_to_site(x,y),self.coord_to_site(x+n_,y+n)])
-    #                             self.interactions.append([coeff,self.coord_to_site(x+n_,y),self.coord_to_site(x,y+n)])
-                            
-    #                 for y in range(self.Ly-n_):
-    #                     for x in range(self.Lx-n):
-    #                         coeff = np.sqrt(n**2+n_**2)**6
-    #                         if n_ == 0 :
-    #                             self.interactions.append([coeff,self.coord_to_site(x,y),self.coord_to_site(x+n,y)])
-    #                         elif n == n_: 
-    #                             continue #already counted above
-    #                         else:
-    #                             self.interactions.append([coeff,self.coord_to_site(x,y),self.coord_to_site(x+n,y+n_)])
-    #                             self.interactions.append([coeff,self.coord_to_site(x,y+n_),self.coord_to_site(x+n,y)])
