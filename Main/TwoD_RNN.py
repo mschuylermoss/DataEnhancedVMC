@@ -11,14 +11,12 @@ class MDTensorizedRNNCell(tf.compat.v1.nn.rnn_cell.RNNCell):
     """
     def __init__(self, units = None, output_size=None, activation = None, name=None, dtype = None):
         super(MDTensorizedRNNCell, self).__init__(name=name)
-        # save class variables
         self._num_in = output_size
         self._num_units = units
         self._state_size = units
         self._output_size = output_size
         self.activation = activation
 
-        # set up input -> hidden connection
         if name != None:
             self.W = tf.Variable(name="W_" + name,
                              initial_value=tf.keras.initializers.GlorotNormal()([units, 2 * units, 2 * self._num_in]),
@@ -35,8 +33,6 @@ class MDTensorizedRNNCell(tf.compat.v1.nn.rnn_cell.RNNCell):
             self.b = tf.Variable(name="b",
                              initial_value=tf.keras.initializers.GlorotNormal()([units]),
                              dtype = dtype)
-
-    # needed properties
 
     @property
     def input_size(self):
@@ -57,7 +53,6 @@ class MDTensorizedRNNCell(tf.compat.v1.nn.rnn_cell.RNNCell):
     def call(self, inputs, states):
 
         inputstate_mul = tf.einsum('ij,ik->ijk', tf.concat(states, 1), tf.concat(inputs,1))
-        # prepare input linear combination
 
         state_mul = tensordot(tf, inputstate_mul, self.W, axes=[[1,2],[1,2]]) # [batch_sz, units]
 
@@ -77,7 +72,6 @@ class MDRNNGRUcell(tf.compat.v1.nn.rnn_cell.RNNCell):
 
     def __init__(self, units=None, output_size=None, activation=None, name=None, dtype=None):
         super(MDRNNGRUcell, self).__init__(name=name)
-        # save class variables
         self._num_in = output_size
         self._num_units = units
         self._state_size = units
@@ -114,7 +108,6 @@ class MDRNNGRUcell(tf.compat.v1.nn.rnn_cell.RNNCell):
                                                                                                   distribution="uniform"),
                                                 dtype=dtype)
 
-    # needed properties
     @property
     def trainable_variables(self):
         return [self.W, self.b, self.Wg, self.bg, self.Wmerge]
@@ -134,7 +127,6 @@ class MDRNNGRUcell(tf.compat.v1.nn.rnn_cell.RNNCell):
     def call(self, inputs, states):
         inputstate_mul = tf.einsum('ij,ik->ijk', tf.concat((states[0], states[1]), 1),
                                    tf.concat((inputs[0], inputs[1]), 1))
-        # prepare input linear combination
         state_mul = tensordot(tf, inputstate_mul, self.W, axes=[[1, 2], [1, 2]])  # [batch_sz, num_units]
         state_mulg = tensordot(tf, inputstate_mul, self.Wg, axes=[[1, 2], [1, 2]])  # [batch_sz, num_units]
 
@@ -189,12 +181,10 @@ class MDRNNWavefunction(object):
         if self.weight_sharing == True:
             self.trainable_variables.extend(self.rnn.trainable_variables)
             self.trainable_variables.extend(self.dense.trainable_variables)
-            # Check that there are the correct amount of trainable variables
             self.variables_names = [v.name for v in self.trainable_variables]
             sum = 0
             for k, v in zip(self.variables_names, self.trainable_variables):
                 v1 = tf.reshape(v, [-1])
-                # print(k, v1.shape)
                 sum += v1.shape[0]
             print(f'The sum of params is {sum}')
         else:
@@ -202,12 +192,10 @@ class MDRNNWavefunction(object):
                 self.trainable_variables.extend(cell.trainable_variables)
             for node_dense in self.dense:
                 self.trainable_variables.extend(node_dense.trainable_variables)
-            # Check that there are the correct amount of trainable variables
             self.variables_names = [v.name for v in self.trainable_variables]
             sum = 0
             for k, v in zip(self.variables_names, self.trainable_variables):
                 v1 = tf.reshape(v, [-1])
-                # print(k, v1.shape)
                 sum += v1.shape[0]
             print(f'The total number of parameters is {sum}')
 
@@ -226,7 +214,6 @@ class MDRNNWavefunction(object):
                              the log-probability of each sample
         """
 
-        # Initial input to feed to the lstm                                    *****THINK WE CHANGED x AND y HERE
         samples = [[[] for nx in range(self.Lx)] for ny in range(self.Ly)]
         probs = [[[] for nx in range(self.Lx)] for ny in range(self.Ly)]
         rnn_states = {}
@@ -246,7 +233,6 @@ class MDRNNWavefunction(object):
                     rnn_states[f"{nx}{ny}"] = self.rnn.get_initial_state(inputs[f"{nx}{ny}"], dtype=tf.float32)
                 else:
                     rnn_states[f"{nx}{ny}"] = self.rnn[0].get_initial_state(inputs[f"{nx}{ny}"], dtype=tf.float32)
-
 
             if ny % 2 == 1:
                 nx = self.Lx
@@ -427,7 +413,6 @@ class MDRNNWavefunction(object):
         samples_reconstructed = tf.stack(values=samples_reconstructed,axis=1)
         samples_reconstructed = tf.transpose(samples_reconstructed,perm=[2,0,1])
         if initial_pass:
-            # this assertion shows that we are manipulating probs/samples correctly
             assert(np.all(samples_reconstructed.numpy()==samples_.numpy()))
         one_hot_samples = tf.one_hot(samples_, depth=self.K, dtype=tf.float32)
         log_probs = 0.5 * tf.reduce_sum(tf.reduce_sum(tf.math.log(tf.clip_by_value(tf.reduce_sum(tf.multiply(probs, one_hot_samples), axis=3), 1e-10, 1.0)),axis=2), axis=1)
