@@ -20,6 +20,9 @@ parser.add_argument('data_epochs', type=int,
 parser.add_argument('vmc_epochs', type=int,
                     help='A required integer argument: number of vmc training steps')
 # Optional argument
+parser.add_argument('--t_trans', type=float, default=0,
+                    help='An optional integer argument: transition step from data to VMC')
+# Optional argument
 parser.add_argument('--data_lr', type=float, default=1e-3,
                     help='An optional float argument: learning rate for data-driven training')
 # Optional argument
@@ -53,6 +56,7 @@ sweep_rate = 15
 delta_arg = args.delta
 data_steps_arg = args.data_epochs
 vmc_steps_arg = args.vmc_epochs
+t_trans_arg = args.t_trans
 data_lr_arg = args.data_lr
 vmc_lr_arg = args.vmc_lr
 rnn_dim_arg = args.rnn_dim
@@ -63,7 +67,7 @@ qmc_dset_size_arg = args.qmc_dset_size
 
 def main():
     config = {
-        'name': 'AllTrainedModels2', 
+        'name': 'add_t_trans', 
 
         'Lx':Lx,  # number of sites in x-direction                    
         'Ly':Ly,  # number of sites in the y-directioni
@@ -81,6 +85,7 @@ def main():
         'ns': 100,
         'data_epochs':data_steps_arg,
         'vmc_epochs':vmc_steps_arg,
+        't_trans':t_trans_arg,
         'data_lr': data_lr_arg,  # learning rate (for data-driven)
         'vmc_lr': vmc_lr_arg, # learning rate (for Hamiltonian-driven)
         'ckpt_every': 10,

@@ -43,7 +43,7 @@ seed_arg = args.seed
 
 def main():
     config = {
-        'name': 'AllTrainedModels', 
+        'name': 'add_t_trans', 
 
         'Lx':Lx,  # number of sites in x-direction                    
         'Ly':Ly,  # number of sites in the y-directioni
