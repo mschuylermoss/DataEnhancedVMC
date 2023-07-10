@@ -92,24 +92,35 @@ def train_wavefunction(config):
     # ---- Save Paths ---------------------------------------------------------------------------
     exp_name = config['name']
     scratch_path = '/scratch/msmoss/RNN_sims'
-    base_path = scratch_path + f'/Rydbergs/N_{Lx*Ly}/{exp_name}/{rnn_type}_rnn/delta_{delta}/seed_{seed}'
+    base_path = scratch_path + f'/Rydbergs/N_{Lx*Ly}/{exp_name}/'
+    train_quantities_path = 'train_quantities/'
+    fine_path = f'{rnn_type}_rnn/delta_{delta}/seed_{seed}'
 
     if data_epochs > 0:
         if qmc_data:
-            data_path = base_path + '/QMC_data/dset_size_{dset_size}'
+            data_path = base_path + train_quantities_path + fine_path + f'/QMC_data/dset_size_{dset_size}'
+            data_manager_path = base_path + fine_path + f'/QMC_data/dset_size_{dset_size}'
         else:
-            data_path = base_path + '/Exp_data'
+            data_path = base_path + train_quantities_path + fine_path + '/Exp_data'
+            data_manager_path = base_path + fine_path + '/Exp_data'
         write_config(config,data_path)
 
-        hybrid_path_base = base_path + f'/hybrid_train'
+        hybrid_path_base = base_path + train_quantities_path + fine_path + f'/hybrid_train'
+        hybrid_manager_path_base = base_path + fine_path + f'/hybrid_train'
+        if qmc_data:
+            hybrid_path_base = hybrid_path_base + f'/hybrid_QMC_data/dset_size_{dset_size}'
+            hybrid_manager_path_base = hybrid_manager_path_base + f'/hybrid_QMC_data/dset_size_{dset_size}'
         write_config(config,hybrid_path_base)
         vmc_start = load_vmc_start(hybrid_path_base,ckpt_every)
         if vmc_start == 0:
             hybrid_path = hybrid_path_base
+            hybrid_manager_path = hybrid_manager_path_base
         else:
             hybrid_path = hybrid_path_base + f'/{vmc_start}_ds/lr_{vmc_lr}'
+            hybrid_manager_path = hybrid_manager_path_base #+ f'/{vmc_start}_ds/lr_{vmc_lr}'
 
-    vmc_path = base_path + '/vmc_only'
+    vmc_path = base_path + train_quantities_path + fine_path + '/vmc_only'
+    vmc_manager_path = base_path + fine_path + '/vmc_only'
     write_config(config,vmc_path)
 
     # ---- Define Train Step --------------------------------------------------------------------
@@ -149,9 +160,9 @@ def train_wavefunction(config):
     global_step = tf.Variable(0, name="global_step")
     ckpt = tf.train.Checkpoint(step=global_step, optimizer=wavefxn.optimizer, variables=wavefxn.trainable_variables)
     if data_epochs > 0:
-        data_manager = tf.train.CheckpointManager(ckpt, data_path, max_to_keep=None) # will keep checkpoints for every step
-        hybrid_manager = tf.train.CheckpointManager(ckpt, hybrid_path, max_to_keep=1)
-    vmc_manager = tf.train.CheckpointManager(ckpt, vmc_path, max_to_keep=1)
+        data_manager = tf.train.CheckpointManager(ckpt, data_manager_path, max_to_keep=None) # will keep checkpoints for every step
+        hybrid_manager = tf.train.CheckpointManager(ckpt, hybrid_manager_path, max_to_keep=1)
+    vmc_manager = tf.train.CheckpointManager(ckpt, vmc_manager_path, max_to_keep=1)
 
     if config['CKPT']:
         if data_epochs > 0:
@@ -290,17 +301,25 @@ def train_wavefunction(config):
             print(f"Done with {data_epochs} data-driven training steps!")
     
         if (vmc_epochs > 0):
-            loc_ma_energies = min_moving_average(energy,50)[0][0]
-            np.save(hybrid_path+'/loc_ma_energy',loc_ma_energies)
-            vmc_start = (loc_ma_energies//ckpt_every) * ckpt_every
-            hybrid_path = hybrid_path_base + f'/{vmc_start}_ds/lr_{vmc_lr}'
+            t_trans = config.get('t_trans',0)
+            if t_trans==0:
+                loc_ma_energies = min_moving_average(energy,50)[0][0]
+                np.save(hybrid_path+'/loc_ma_energy',loc_ma_energies)
+                vmc_ckpt_start = loc_ma_energies//ckpt_every
+                vmc_steps_start = vmc_ckpt_start * ckpt_every
+            else:
+                np.save(hybrid_path+'/loc_ma_energy',t_trans)
+                vmc_ckpt_start = t_trans//ckpt_every
+                vmc_steps_start = vmc_ckpt_start * ckpt_every
+            hybrid_path = hybrid_path_base + f'/{vmc_steps_start}_ds/lr_{vmc_lr}'
+            hybrid_manager_path = hybrid_manager_path_base + f'/{vmc_steps_start}_ds/lr_{vmc_lr}'
             write_config(config,hybrid_path)
-            hybrid_manager = tf.train.CheckpointManager(ckpt, hybrid_path, max_to_keep=1)
-            np.save(hybrid_path+'/vmc_start_ckpt',vmc_start//ckpt_every)
-            if (vmc_start > 0) & (vmc_start < len(data_manager.checkpoints)):
-                ckpt.restore(data_manager.checkpoints[vmc_start])
-                print(f"CKPT ON and ckpt {vmc_start} found.")
-                print(f"Restored from {data_manager.checkpoints[vmc_start//ckpt_every]}")
+            hybrid_manager = tf.train.CheckpointManager(ckpt, hybrid_manager_path, max_to_keep=1)
+            np.save(hybrid_path+'/vmc_start_ckpt',vmc_ckpt_start)
+            if (vmc_steps_start > 0) & (vmc_ckpt_start < len(data_manager.checkpoints)):
+                ckpt.restore(data_manager.checkpoints[vmc_ckpt_start])
+                print(f"CKPT ON and ckpt {vmc_ckpt_start} found.")
+                print(f"Restored from {data_manager.checkpoints[vmc_ckpt_start]}")
                 ckpt_step = ckpt.step.numpy()
                 print(f"Continuing at step {ckpt.step.numpy()}")
                 optimizer_initializer(wavefxn.optimizer)
@@ -312,6 +331,7 @@ def train_wavefunction(config):
     # ---- Train w/ VMC ----------------------------------------------------------------------------------
     it_vmc = global_step.numpy()
     print(f"Beginning VMC training from step {it_vmc}")
+    data_epochs = config.get('data_epochs',0)
     
     for n in range(it_vmc+1, vmc_epochs+1):
         samples, _ = wavefxn.sample(ns)
@@ -333,10 +353,11 @@ def train_wavefunction(config):
         if (config['CKPT']) & (n%ckpt_every == 0): # checkpoint frequently during data training
             if data_epochs > 0:
                 hybrid_manager.save()
-                print(f"Saved checkpoint for step {n} in {hybrid_path}.")
+                print(f"Saved checkpoint for step {n} in {hybrid_manager_path}.")
             else:
                 vmc_manager.save()
-                print(f"Saved checkpoint for step {n} in {vmc_path}.")
+                print(f"Saved checkpoint for step {n} in {vmc_manager_path}.")
+
         if (config['Write_Data']) & (n%ckpt_every == 0): # save training quantities each time we checkpoint
             if data_epochs > 0:
                 print(f"Saved training quantitites for step {n} in {hybrid_path}.")
