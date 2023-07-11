@@ -4,7 +4,7 @@
 
 joblist=$(sq -h --format="%j")
 
-for delta in $(seq -1.545 0.5 13.455) 
+for delta in 13.455 #$(seq -1.545 0.5 13.455) 
 do
     for seed in $(seq 111 111 111) # one seed for now
     do

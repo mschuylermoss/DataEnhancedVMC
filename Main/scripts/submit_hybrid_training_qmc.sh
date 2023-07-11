@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH -t 01-00:00:00
+#SBATCH -t 1-00:00:00
 #SBATCH --gpus-per-node=p100  
 #SBATCH --mem=20000
 #SBATCH --account=def-rgmelko
@@ -20,13 +20,15 @@ echo $data_epochs
 echo $vmc_epochs
 echo $dim
 echo $nh
+echo $dset_size
 
 python script_hybrid_training.py \
     $delta \
     $data_epochs \
     $vmc_epochs \
-    --t_trans $t_trans \
     --vmc_lr $vmc_lr \
     --rnn_dim $dim \
     --nh $nh \
-    --seed $seed 
+    --seed $seed \
+    --qmc_data \
+    --qmc_dset_size $dset_size

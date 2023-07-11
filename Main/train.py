@@ -307,8 +307,8 @@ def train_wavefunction(config):
                 vmc_steps_start = vmc_ckpt_start * ckpt_every
             else:
                 np.save(hybrid_path+'/loc_ma_energy',t_trans)
-                vmc_ckpt_start = t_trans//ckpt_every
-                vmc_steps_start = vmc_ckpt_start * ckpt_every
+                vmc_ckpt_start = int(t_trans//ckpt_every)
+                vmc_steps_start = int(vmc_ckpt_start * ckpt_every)
             hybrid_path = hybrid_path_base + f'/{vmc_steps_start}_ds/lr_{vmc_lr}'
             hybrid_manager_path = hybrid_manager_path_base + f'/{vmc_steps_start}_ds/lr_{vmc_lr}'
             write_config(config,hybrid_path)
