@@ -140,11 +140,9 @@ class MDRNNGRUcell(tf.compat.v1.nn.rnn_cell.RNNCell):
 
 class MDRNNWavefunction(object):
     def __init__(self, Lx:int, Ly:int,                #system size parameters
-                 V, Omega, delta,                     #experiment parameters
                  num_hidden:int,                      #num_hidden = units!!!! = number of hidden units between RNN Cells
                  learning_rate,                       #does not get used here
                  weight_sharing = True,               #indicates whether RNN cells' weights are shared (same w dense layer)
-                 trunc=2,                             #defines the order of NN interactions to include
                  seed=1234,
                  cell=MDTensorizedRNNCell):
         
@@ -152,10 +150,6 @@ class MDRNNWavefunction(object):
         self.Lx       = Lx              # Size along x
         self.Ly       = Ly              # Size along y
         self.N        = self.Lx * self.Ly 
-        self.V        = V               # Van der Waals potential
-        self.Omega    = Omega           # Rabi frequency
-        self.delta    = delta           # Detuning
-        self.trunc    = trunc           # Truncation, set to Lx+Ly for none, default is 2
         self.nh       = num_hidden      # Number of hidden units in the RNN
         self.seed     = seed            # Seed of random number generator 
         self.K        = 2               # Dimension of the local Hilbert space
