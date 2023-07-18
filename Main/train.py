@@ -3,7 +3,7 @@ import numpy as np
 from dset_helpers import create_KZ_tf_dataset, data_given_param
 from dset_helpers import load_KZ_QMC_uncorr_data_from_batches, create_KZ_QMC_tf_dataset
 from OneD_RNN import OneD_RNN_wavefxn 
-from TwoD_RNN import MDRNNWavefunction, MDTensorizedRNNCell, MDRNNGRUcell
+from TwoD_RNN import MDRNNWavefunction, MDRNNGRUcell
 from energy_func import buildlattice, construct_mats, get_Rydberg_Energy_Vectorized
 from helpers import optimizer_initializer, min_moving_average, write_config, load_vmc_start
 # from stag_mag import calculate_stag_mag
@@ -22,8 +22,9 @@ def train_wavefunction(config):
 
     Note: For data-enhanced VMC, this code will train the model using this appropriate data creating
     regular benchmarks. Once the data-driven training is complete, the lowest energy reached 
-    by the trained model will be found and variational training will begin from *that* point.
-    Therefore, it is helpful if data_epochs is an integer between 3,000-10,000.
+    by the trained model will be found and variational training will begin from *that* point,
+    unless a t_trans is specified in the config. Therefore, it is helpful if data_epochs is an 
+    integer between 3,000-10,000.
     '''
 
     # ---- System Parameters -----------------------------------------------------------------
@@ -50,7 +51,7 @@ def train_wavefunction(config):
     if rnn_type == 'OneD':
         wavefxn = OneD_RNN_wavefxn(Lx,Ly,num_hidden,1e-3,seed)
     elif rnn_type =='TwoD':
-        wavefxn = MDRNNWavefunction(Lx,Ly,V,Omega,delta,num_hidden,1e-3,weight_sharing,trunc,seed,cell=MDRNNGRUcell)
+        wavefxn = MDRNNWavefunction(Lx,Ly,num_hidden,1e-3,weight_sharing,seed,cell=MDRNNGRUcell)
     else:
         raise ValueError(f"{rnn_type} is not a valid option for the RNN wave function. Please choose OneD or TwoD.")
 
