@@ -67,32 +67,32 @@ qmc_dset_size_arg = args.qmc_dset_size
 
 def main():
     config = {
-        'name': 'add_t_trans', 
+        'name': 'New_Results', 
 
         'Lx':Lx,  # number of sites in x-direction                    
-        'Ly':Ly,  # number of sites in the y-directioni
+        'Ly':Ly,  # number of sites in the y-direction
         'V': V0,
         'Omega': Omega,
-        'delta': delta_arg,
+        'delta': delta_arg, # detuning
         'sweep_rate':sweep_rate,
         'trunc': 100,
         
-        'RNN': rnn_dim_arg,
+        'RNN': rnn_dim_arg, # 1D or 2D RNN wavefunction
         'nh': nh_arg,  # number of memory/hidden units
         'weight_sharing': True,
-        'seed': seed_arg,
+        'seed': seed_arg, # seed for RNG
         
         'ns': 100,
-        'data_epochs':data_steps_arg,
-        'vmc_epochs':vmc_steps_arg,
-        't_trans':t_trans_arg,
+        'data_epochs':data_steps_arg, # number of data-driven train steps
+        'vmc_epochs':vmc_steps_arg, # number of Hamiltonian-driven train steps
+        't_trans':t_trans_arg, # where to transition loss functions
         'data_lr': data_lr_arg,  # learning rate (for data-driven)
         'vmc_lr': vmc_lr_arg, # learning rate (for Hamiltonian-driven)
         'ckpt_every': 10,
 
         'batch_size_data': 100,
-        'QMC_data': qmc_data_arg,
-        'QMC_dset_size': qmc_dset_size_arg,
+        'QMC_data': qmc_data_arg, # use QMC data?
+        'QMC_dset_size': qmc_dset_size_arg, # how much QMC data to use
         
         'Print':True,
         'Write_Data': True,

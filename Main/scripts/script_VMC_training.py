@@ -51,24 +51,24 @@ seed_arg = args.seed
 
 def main():
     config = {
-        'name': 'add_t_trans', 
+        'name': 'New_Results', 
 
         'Lx':Lx,  # number of sites in x-direction                    
         'Ly':Ly,  # number of sites in the y-directioni
         'V': V0,
         'Omega': Omega,
-        'delta': delta_arg,
+        'delta': delta_arg, # detuning
         'sweep_rate':sweep_rate,
         'trunc': 100,
         
-        'RNN': rnn_dim_arg,
+        'RNN': rnn_dim_arg, # 1D or 2D RNN wavefunction
         'nh': nh_arg,  # number of memory/hidden units
         'weight_sharing': True,
-        'seed': seed_arg,
+        'seed': seed_arg, # seed for RNG
         
         'ns': 100,
         'data_epochs':0,
-        'vmc_epochs':vmc_steps_arg,
+        'vmc_epochs':vmc_steps_arg, # number of Hamiltonian-driven train steps
         'vmc_lr': vmc_lr_arg, # learning rate (for Hamiltonian-driven)
         'ckpt_every': 10,
         
@@ -77,7 +77,7 @@ def main():
         'CKPT':True
         }
     
-    return train_wavefunction(config)
+    return train_wavefunction(config) 
 
 
 if __name__ == "__main__":
