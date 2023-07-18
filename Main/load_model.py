@@ -25,7 +25,6 @@ def LoadModel(path_to_config,path_to_ckpts):
     Return the mode and the saved training quantities.
     '''
     # ---- Load Config -----------------------------------------------------------------------
-    print(os.getcwd())
     config = {}
     with open(path_to_config+"config.txt") as f:
         for line in f:
@@ -68,7 +67,7 @@ def LoadModel(path_to_config,path_to_ckpts):
         raise ValueError(f"{config['RNN']} is not a valid option for the RNN wave function. Please choose OneD or TwoD.")
 
     # ---- Reload From CKPT -------------------------------------------------------------
-    ckpt = tf.train.Checkpoint(step=global_step, optimizer=wavefxn.optimizer, variables=wavefxn.trainable_variables)
+    ckpt = tf.train.Checkpoint(step=global_step, variables=wavefxn.trainable_variables)
     manager = tf.train.CheckpointManager(ckpt, path_to_ckpts, max_to_keep=1)
     ckpt.restore(manager.latest_checkpoint)
 

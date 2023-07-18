@@ -1,17 +1,14 @@
 import numpy as np 
 import tensorflow as tf 
-# physical_devices = tf.config.list_physical_devices('GPU')
-# tf.config.experimental.set_memory_growth(physical_devices[0], True)
 import random
 
-class OneD_RNN_wavefxn(tf.keras.Model):
-    
-    # Constructor
-    def __init__(self, Lx, Ly, 
-                 num_hidden, learning_rate,
+class OneD_RNN_wavefxn(object):
+    def __init__(self, Lx:int, Ly:int, 
+                 num_hidden:int, 
+                 learning_rate,
                  seed=1234):
         
-        super(OneD_RNN_wavefxn, self).__init__()
+        # super(OneD_RNN_wavefxn, self).__init__()
 
         """ PARAMETERS """
         self.Lx       = Lx              # Size along x
@@ -42,13 +39,13 @@ class OneD_RNN_wavefxn(tf.keras.Model):
 
         sample,_ = self.sample(1)
         self.logpsi(sample)
-        self.trainable_variables_ = []
-        self.trainable_variables_.extend(self.rnn.trainable_variables)
-        self.trainable_variables_.extend(self.dense.trainable_variables)
+        self.trainable_variables = []
+        self.trainable_variables.extend(self.rnn.trainable_variables)
+        self.trainable_variables.extend(self.dense.trainable_variables)
         # Check that there are the correct amount of trainable variables
-        self.variables_names = [v.name for v in self.trainable_variables_]
+        self.variables_names = [v.name for v in self.trainable_variables]
         sum_ = 0
-        for k, v in zip(self.variables_names, self.trainable_variables_):
+        for k, v in zip(self.variables_names, self.trainable_variables):
             v1 = tf.reshape(v, [-1])
             sum_ += v1.shape[0]
         print(f'The total number of parameters is {sum_}')
